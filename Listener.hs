@@ -2,10 +2,9 @@ module Listener where
 
 import Data.ByteString.Char8 as BIN (ByteString, pack, unpack)
 import Data.String (words)
-import Data.List as List (isPrefixOf, findIndex, tails, delete)
+import Data.List as List (isPrefixOf, delete)
 import Data.Maybe (fromJust)
-import qualified Data.Map.Strict as Map (
-    Map, empty, map)
+import qualified Data.Map.Strict as Map (empty, map)
 
 import Control.Monad
 import Control.Monad.State.Lazy
@@ -20,9 +19,7 @@ import Network.Socket (
 import Network.Socket.ByteString (send, recv)
 
 import IRC
-
--- Channel: [Nicknames]
-type BotState = Map.Map String [String]
+import Common (BotState, fst', trd')
 
 
 serverConnect :: String -> String -> Bool -> [String] -> String -> IO ()
@@ -104,9 +101,6 @@ pickCommand _ [] = \x -> const []
 pickCommand cmdName (c:cmds)
     | cmdName == fst' c = trd' c
     | otherwise         = pickCommand cmdName cmds
-
-
-substringIndex what str = findIndex (what `isPrefixOf`) (tails str)
 
 
 isIPv4 (AddrInfo _ AF_INET _ _ _ _) = True

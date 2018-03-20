@@ -1,4 +1,4 @@
-FILES=Main.hs Listener.hs IRC.hs
+FILES=Main.hs Listener.hs IRC.hs Common.hs
 OPTS=
 
 all:

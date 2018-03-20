@@ -1,11 +1,12 @@
 module IRC where
 
-import Data.List as List (isPrefixOf, delete)
+import Data.List as List (isPrefixOf, delete, elem)
 import Data.List.Split (splitOn)
-import Data.ByteString.Char8 as BIN (unpack, pack)
+import Data.ByteString.Char8 as BIN (ByteString, unpack, pack)
 import Data.Maybe (fromJust)
-import qualified Data.Map.Strict as Map (
-    Map, empty, insert, lookup, delete, map)
+import qualified Data.Map.Strict as Map (empty, insert, lookup, delete, map)
+
+import Common (BotState, splitOnceBy, fst', snd')
 
 
 data MsgType = NAMES | NAMES_END | JOIN | NICK | PART deriving Show
@@ -150,10 +151,3 @@ commandList = [
         ("!leave",    "Leave current channel.",                       leaveCmd),
         ("!commands", "Shows this very helpful commands description", commandsCmd)
     ]
-
--- TODO: move these functions to some kind of a common module
-fst' (a,_,_) = a
-snd' (_,b,_) = b
-trd' (_,_,c) = c
-
-splitOnceBy d = fmap (drop 1) . break (== d)

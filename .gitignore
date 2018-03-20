@@ -1,0 +1,4 @@
+*.hi
+*.o
+ircbot
+ircbot-debug

@@ -123,9 +123,15 @@ joinChannels = map (\x -> pack $ "JOIN " ++ x ++ "\r\n")
 pong (Ping host) = [pack $ "PONG :" ++ host ++ "\r\n"]
 
 
-shameCmd state (PrivMsg _ _ chat _ msg)
-    | length msg == 2 = [buildActionMsg chat $ "publicly pronounces "
-                            ++ (msg !! 1) ++ " to be a dick"]
+shameCmd state (PrivMsg from _ chat _ msg)
+    | length msg == 2 =
+        if List.elem (msg !! 1) $ fromJust $ Map.lookup chat state
+            then
+                [buildActionMsg chat $ "publicly pronounces " ++ (msg !! 1) ++
+                 " to be a dick"]
+            else
+               [buildPrivMsg chat $ "There's no such person as " ++ (msg !! 1)
+                ++ ". Aren't you, " ++ from ++ ", the dick here?"]
     | otherwise = [buildPrivMsg chat "I don't know who to shame!"]
 joinCmd state (PrivMsg _ _ chat _ msg)
     | length msg == 2 = [pack $ "JOIN " ++ (msg !! 1) ++ "\r\n"]
@@ -145,6 +151,7 @@ buildPrivMsg chat msg =
 buildActionMsg chat msg =
         buildPrivMsg chat $ "\SOHACTION " ++ msg ++ "\SOH"
 
+commandList :: [(String, String, BotState -> Message -> [ByteString])]
 commandList = [
         ("!shame",    "Shame a person!",                              shameCmd),
         ("!join",     "Join a channel.",                              joinCmd),

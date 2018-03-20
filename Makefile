@@ -9,3 +9,6 @@ debug:
 
 debug-run: debug
 	./ircbot-debug $(OPTS) +RTS -xc
+
+clean:
+	rm -f *.o *.hi ircbot ircbot-debug

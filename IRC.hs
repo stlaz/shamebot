@@ -3,7 +3,7 @@ module IRC where
 import Data.List as List (isPrefixOf, delete, elem)
 import Data.List.Split (splitOn)
 import Data.ByteString.Char8 as BIN (ByteString, unpack, pack)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Map.Strict as Map (empty, insert, lookup, delete, map)
 
 import Common (BotState, splitOnceBy, fst', snd')
@@ -125,17 +125,24 @@ pong (Ping host) = [pack $ "PONG :" ++ host ++ "\r\n"]
 
 shameCmd state (PrivMsg from _ chat _ msg)
     | length msg == 2 =
-        if List.elem (msg !! 1) $ fromJust $ Map.lookup chat state
+        if List.elem (msg !! 1) $ fromMaybe [] getChat
             then
                 [buildActionMsg chat $ "publicly pronounces " ++ (msg !! 1) ++
                  " to be a dick"]
             else
-               [buildPrivMsg chat $ "There's no such person as " ++ (msg !! 1)
-                ++ ". Aren't you, " ++ from ++ ", the dick here?"]
+                noPersonFoundMsg
     | otherwise = [buildPrivMsg chat "I don't know who to shame!"]
+    where
+        getChat = Map.lookup chat state
+        noPersonFoundMsg = [
+                buildPrivMsg chat $ "There's no such person as " ++ (msg !! 1)
+                ++ " in this chat. Aren't you, " ++ from ++ ", the dick here?"
+            ]
+
 joinCmd state (PrivMsg _ _ chat _ msg)
     | length msg == 2 = [pack $ "JOIN " ++ (msg !! 1) ++ "\r\n"]
     | otherwise = [buildPrivMsg chat "Please specify a channel to join."]
+
 leaveCmd state (PrivMsg _ _ chat _ _) = [pack $ "PART " ++ chat ++ "\r\n"]
 commandsCmd state (PrivMsg _ _ chat _ _) =
         buildPrivMsg chat "Try my awesome commands:" : getCommandList

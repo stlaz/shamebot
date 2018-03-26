@@ -90,6 +90,7 @@ worker msg@Ping{} botname state = pong msg
 worker Unknown _ _ = []
 
 
+pickAction state privmsg@(PrivMsg _ _ _ _ []) = []
 pickAction state privmsg@(PrivMsg _ _ _ _ msg) =
         pickCommand (head msg) commandList state privmsg
 

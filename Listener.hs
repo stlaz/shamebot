@@ -19,7 +19,7 @@ import Network.Socket (
 import Network.Socket.ByteString (send, recv)
 
 import IRC
-import Common (BotState, fst', trd')
+import Common (BotState, CommandAction(SendMessage), fst', trd')
 
 
 serverConnect :: String -> String -> Bool -> [String] -> String -> IO ()
@@ -55,49 +55,54 @@ sendMsgs sock (m:msgs) botname state =
 
 
 sendMsgsStateless sock [] = return 0
-sendMsgsStateless sock (m:msgs) = do
+sendMsgsStateless sock (SendMessage m:msgs) = do
     send sock m
     sendMsgsStateless sock msgs
 
 
+-- TODO: merge the cases so that we don't depend on Message type but rather
+--       perform actions based on pattern match of actions returned in list
+--       from pickAction
 sendMsg :: Socket -> Message -> String -> BotState -> IO BotState
 sendMsg sock msg@ChanMsg{} botname state = do
-        newState <- stateChange msg botname state
-        print newState
-        return newState
+    newState <- stateChange msg botname state
+    print newState
+    return newState
 sendMsg sock msg botname state = do
-        sendMsgsStateless sock $ worker msg botname state
-        return state
+    -- FIXME: botMentionedCmd should become a regular command
+    let actionList = pickAction msg botname state
+    sendMsgsStateless sock $ if not (null actionList)
+                                then actionList
+                                else botMentionedCmd botname msg
+    return state
 
 
-worker msg@PrivMsg{} botname state =
-        if not (null actionRet) then actionRet
-                                else botMentionedCmd msg
+botMentionedCmd botname (PrivMsg from _ chat _ msg)
+    | isPrefixInList botname msg = [buildPrivMsg chat $
+                            from ++ ": Do you require my service?"]
+    | otherwise = []
     where
-        actionRet = pickAction state msg
-        botMentionedCmd (PrivMsg from _ chat _ msg)
-            | isPrefixInList botname msg = [buildPrivMsg chat $
-                                    from ++ ": Do you require my service?"]
-            | otherwise = []
         isPrefixInList _ [] = False
         isPrefixInList a (s:ss)
             | a `isPrefixOfMaxPlus1Len` s = True
             | otherwise                   = isPrefixInList a ss
         -- FIXME: does not check the lenght, only takes!
         isPrefixOfMaxPlus1Len a b = isPrefixOf a $ take (length a + 1) b
-
-worker msg@Ping{} botname state = pong msg
-worker Unknown _ _ = []
+botMentionedCmd botname _ = []
 
 
-pickAction state privmsg@(PrivMsg _ _ _ _ []) = []
-pickAction state privmsg@(PrivMsg _ _ _ _ msg) =
-        pickCommand (head msg) commandList state privmsg
+-- pickAction :: picks a function to handle the incoming message, executes it
+--               and returns list of actions that need to be performed
+pickAction msg@(PrivMsg _ _ _ _ []) botname state = []
+pickAction msg@(PrivMsg _ _ _ _ msgwrds) botname state =
+    pickCommand (head msgwrds) commandList state msg
+pickAction msg@Ping{} botname state = pong msg
+pickAction Unknown _ _ = []
 
 
 pickCommand :: String
-                -> [(String, String, BotState -> Message -> [ByteString])]
-                -> (BotState -> Message -> [ByteString])
+                -> [(String, String, BotState -> Message -> [CommandAction])]
+                -> (BotState -> Message -> [CommandAction])
 pickCommand _ [] = \x -> const []
 pickCommand cmdName (c:cmds)
     | cmdName == fst' c = trd' c

@@ -1,12 +1,12 @@
 module IRC where
 
-import Data.List as List (isPrefixOf, delete, elem)
+import Data.List as List (isPrefixOf, isSuffixOf, delete, elem)
 import Data.List.Split (splitOn)
 import Data.ByteString.Char8 as BIN (ByteString, unpack, pack)
 import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Map.Strict as Map (empty, insert, lookup, delete, map)
 
-import Common (BotState, splitOnceBy, fst', snd')
+import Common (BotState, CommandAction(SendMessage), splitOnceBy, fst', snd')
 
 
 data MsgType = NAMES | NAMES_END | JOIN | NICK | PART deriving Show
@@ -112,20 +112,23 @@ stateChange msg@(ChanMsg from chat t args) botname state =
 
 
 serverLogin botname Nothing =
-    pack ("USER " ++ botname ++ " * 8 :a sad sad bot\r\n") :
-        [pack $ "NICK " ++ botname ++ "\r\n"]
+    SendMessage (pack ("USER " ++ botname ++ " * 8 :a sad sad bot\r\n")) :
+        [SendMessage (pack $ "NICK " ++ botname ++ "\r\n")]
 serverLogin botname passwd =
-    pack ("PASS"  ++ fromJust passwd ++ "\r\n") : serverLogin botname Nothing
+    SendMessage (pack ("PASS"  ++ fromJust passwd ++ "\r\n")) :
+        serverLogin botname Nothing
 
 
-joinChannels = map (\x -> pack $ "JOIN " ++ x ++ "\r\n")
+joinChannels = map (\x -> SendMessage (pack $ "JOIN " ++ x ++ "\r\n"))
 
-pong (Ping host) = [pack $ "PONG :" ++ host ++ "\r\n"]
+pong (Ping host) = [SendMessage (pack $ "PONG :" ++ host ++ "\r\n")]
 
+---------------------------- Bot Commands ----------------------------
+getChatFromState state chat = fromMaybe [] $ Map.lookup chat state
 
 shameCmd state (PrivMsg from _ chat _ msg)
     | length msg == 2 =
-        if List.elem (msg !! 1) $ fromMaybe [] getChat
+        if List.elem (msg !! 1) $ getChatFromState state chat
             then
                 [buildActionMsg chat $ "publicly pronounces " ++ (msg !! 1) ++
                  " to be a dick"]
@@ -133,17 +136,16 @@ shameCmd state (PrivMsg from _ chat _ msg)
                 noPersonFoundMsg
     | otherwise = [buildPrivMsg chat "I don't know who to shame!"]
     where
-        getChat = Map.lookup chat state
         noPersonFoundMsg = [
                 buildPrivMsg chat $ "There's no such person as " ++ (msg !! 1)
                 ++ " in this chat. Aren't you, " ++ from ++ ", the dick here?"
             ]
 
 joinCmd state (PrivMsg _ _ chat _ msg)
-    | length msg == 2 = [pack $ "JOIN " ++ (msg !! 1) ++ "\r\n"]
+    | length msg == 2 = [SendMessage (pack $ "JOIN " ++ (msg !! 1) ++ "\r\n")]
     | otherwise = [buildPrivMsg chat "Please specify a channel to join."]
 
-leaveCmd state (PrivMsg _ _ chat _ _) = [pack $ "PART " ++ chat ++ "\r\n"]
+leaveCmd state (PrivMsg _ _ chat _ _) = [SendMessage (pack $ "PART " ++ chat ++ "\r\n")]
 commandsCmd state (PrivMsg _ _ chat _ _) =
         buildPrivMsg chat "Try my awesome commands:" : getCommandList
     where
@@ -154,11 +156,12 @@ commandsCmd state (PrivMsg _ _ chat _ _) =
                     commandList
 
 buildPrivMsg chat msg =
-        pack $ "PRIVMSG " ++ chat ++ " :" ++ msg ++ "\r\n"
-buildActionMsg chat msg =
-        buildPrivMsg chat $ "\SOHACTION " ++ msg ++ "\SOH"
+        SendMessage (pack $ "PRIVMSG " ++ chat ++ " :" ++ msg ++ "\r\n")
 
-commandList :: [(String, String, BotState -> Message -> [ByteString])]
+buildActionMsg chat msg = buildPrivMsg chat $ "\SOHACTION " ++ msg ++ "\SOH"
+
+
+commandList :: [(String, String, BotState -> Message -> [CommandAction])]
 commandList = [
         ("!shame",    "Shame a person!",                              shameCmd),
         ("!join",     "Join a channel.",                              joinCmd),

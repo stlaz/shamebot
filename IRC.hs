@@ -4,9 +4,10 @@ import Data.List as List (isPrefixOf, isSuffixOf, delete, elem)
 import Data.List.Split (splitOn)
 import Data.ByteString.Char8 as BIN (ByteString, unpack, pack)
 import Data.Maybe (fromJust, fromMaybe)
-import qualified Data.Map.Strict as Map (empty, insert, lookup, delete, map)
+import qualified Data.Map.Strict as Map (lookup)
 
-import Common (BotState, CommandAction(SendMessage), splitOnceBy, fst', snd')
+import Common (BotState, CommandAction(SendMessage, AddToChat, DelFromChat,
+               AddNamesToChat, RenamePerson, NOP), splitOnceBy, fst', snd')
 
 
 data MsgType = NAMES | NAMES_END | JOIN | NICK | PART deriving Show
@@ -94,21 +95,13 @@ parseMsg botname msg
         msgWordString = words msg
 
 
-stateChange msg@(ChanMsg from chat t args) botname state =
+pickChannelCommand msg@(ChanMsg from chat t args) =
         case t of
-            NAMES -> return $ Map.insert chat args state
-            JOIN  -> if from /= botname then
-                         return $ Map.insert chat (from:currNickList) state
-                     else
-                         return state
-            NICK  -> return $ Map.map (\l -> args ++ List.delete from l) state
-            PART  -> if from /= botname then
-                         return $ Map.insert chat (List.delete from currNickList) state
-                    else
-                        return $ Map.delete chat state
-            _     -> return state
-    where
-        currNickList = fromJust $ Map.lookup chat state
+            NAMES -> AddNamesToChat chat args
+            JOIN  -> AddToChat chat from
+            PART  -> DelFromChat chat from
+            NICK  -> RenamePerson from $ head args
+            _     -> NOP
 
 
 serverLogin botname Nothing =

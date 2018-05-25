@@ -10,10 +10,12 @@ import Data.ByteString.Char8 (ByteString)
 type BotState = Map String [String]
 
 data CommandAction = SendMessage ByteString
-    | AddChat String
-    | DelChat String
-    | RenamePerson String String
+    | AddToChat {chat::String, nick::String}
+    | DelFromChat {chat::String, nick::String}
+    | AddNamesToChat {chat::String, names::[String]}
+    | RenamePerson   {oldnick::String, newnick::String}
     | ChangeFluidum String Int
+    | NOP
     deriving Show
 
 

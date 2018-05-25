@@ -60,9 +60,6 @@ performActions sock (m:msgs) botname state =
     performAction sock m botname state >>= performActions sock msgs botname
 
 
--- TODO: merge the cases so that we don't depend on Message type but rather
---       perform actions based on pattern match of actions returned in list
---       from pickAction
 performAction :: Socket -> CommandAction -> String -> BotState -> IO BotState
 performAction _ NOP _ state = return state
 performAction sock action@(SendMessage msg) botname state = do

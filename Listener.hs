@@ -1,7 +1,6 @@
 module Listener where
 
-import Data.ByteString.Char8 as BIN (ByteString, pack, unpack)
-import Data.String (words)
+import Data.ByteString.Char8 as BIN (unpack)
 import Data.List as List (isPrefixOf, delete)
 import Data.Maybe (fromJust)
 import qualified Data.Map.Strict as Map (empty, insert, lookup, delete, map)

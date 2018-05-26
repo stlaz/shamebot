@@ -1,8 +1,8 @@
 module IRC where
 
-import Data.List as List (isPrefixOf, isSuffixOf, delete, elem)
+import Data.List as List (isPrefixOf, isSuffixOf, elem)
 import Data.List.Split (splitOn)
-import Data.ByteString.Char8 as BIN (ByteString, unpack, pack)
+import Data.ByteString.Char8 as BIN (unpack, pack)
 import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Map.Strict as Map (lookup)
 

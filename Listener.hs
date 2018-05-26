@@ -2,7 +2,7 @@ module Listener where
 
 import Data.ByteString.Char8 as BIN (unpack)
 import Data.List as List (isPrefixOf, delete)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map (empty, insert, lookup, delete, map)
 
 import Control.Monad
@@ -49,7 +49,7 @@ serverConnect host port ipv4 channels botname = do
             msgsSend sock $ serverLogin botname Nothing
             msgsSend sock $ joinChannels chans
         msgsSend _ [] = return 0
-        msgsSend sock ((SendMessage m):msgs) = do
+        msgsSend sock (SendMessage m : msgs) = do
             send sock m
             msgsSend sock msgs
 
@@ -79,22 +79,20 @@ changeBotState act@(AddNamesToChat chat names) botname state =
 changeBotState act@(AddToChat chat person) botname state =
     -- only add new chat if we're not joining ourselves
     if person /= botname then
-            Map.insert chat (person:currNickList) state
+            Map.insert chat (person:chatNickList chat state) state
         else
             state
-    where
-        currNickList = fromJust $ Map.lookup chat state
 changeBotState act@(DelFromChat chat person) botname state =
     -- only del chat if we're not ones leaving
     if person /= botname then
-        Map.insert chat (List.delete person currNickList) state
+        Map.insert chat (List.delete person $ chatNickList chat state) state
     else
         Map.delete chat state
-    where
-        -- TODO: remove code duplication
-        currNickList = fromJust $ Map.lookup chat state
 changeBotState act@(RenamePerson oldnick newnick) botname state =
     Map.map (\l -> newnick : List.delete oldnick l) state
+
+chatNickList :: String -> BotState -> [String]
+chatNickList chat state = fromMaybe [] $ Map.lookup chat state
 
 
 botMentionedCmd botname (PrivMsg from _ chat _ msg)
